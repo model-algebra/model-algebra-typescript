@@ -1,0 +1,6 @@
+[submodule "resources/schemas"]
+	path = resources/schemas
+	url = git@github.com:model-algebra/model-schema.git
+[submodule "resources/examples"]
+	path = resources/examples
+	url = git@github.com:model-algebra/model-examples.git
