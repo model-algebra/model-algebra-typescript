@@ -37,19 +37,24 @@ export class Model {
         return this.metadata;
     }
 
-    add(_m: Model): Model {
-        throw new Error('Not implemented');
+    add(m: Model): Model {
+        const targetMap = this.fieldsAsMap();
+        const resultFields = [
+            ...this.fields,
+            ...m.fields.filter(f => !targetMap.has(f.name))
+        ];
+        return new Model(this.metadata, resultFields);
     }
 
     sub(_m: Model): Model {
         throw new Error('Not implemented');
     }
 
-    overrideFrom(_m: Model): Model {
+    intersect(_m: Model): Model {
         throw new Error('Not implemented');
     }
 
-    enrichFrom(_m: Model): Model {
+    xor(_m: Model): Model {
         throw new Error('Not implemented');
     }
 }

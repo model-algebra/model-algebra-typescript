@@ -100,12 +100,17 @@ describe('Model', () => {
         });
     });
 
-    describe('unimplemented operations', () => {
-        it('add should throw Not implemented', () => {
-            const model = Model.fromJsonString(readExample('user_core_model.json'));
-            expect(() => model.add(model)).toThrow('Not implemented');
+    describe('add', () => {
+        it('should compute UNION of user_core and user_extended equal to user_core_add_extended', () => {
+            const core = Model.fromJsonString(readExample('user_core_model.json'));
+            const extended = Model.fromJsonString(readExample('user_extended_model.json'));
+            const expected = Model.fromJsonString(readExample('user_core_add_extended.json'));
+            const result = core.add(extended);
+            expect(result.toJson()).toBe(expected.toJson());
         });
+    });
 
+    describe('unimplemented operations', () => {
         it('sub should throw Not implemented', () => {
             const model = Model.fromJsonString(readExample('user_core_model.json'));
             expect(() => model.sub(model)).toThrow('Not implemented');
