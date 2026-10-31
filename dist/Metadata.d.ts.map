@@ -1,0 +1,1 @@
+{"version":3,"file":"Metadata.d.ts","sourceRoot":"","sources":["../src/Metadata.ts"],"names":[],"mappings":"AAAA,qBAAa,QAAQ;aAEG,IAAI,EAAE,MAAM;aACZ,OAAO,EAAE,MAAM;gBADf,IAAI,EAAE,MAAM,EACZ,OAAO,EAAE,MAAM;IAGnC,MAAM,CAAC,QAAQ,CAAC,IAAI,EAAE;QAAE,IAAI,EAAE,MAAM,CAAC;QAAC,OAAO,EAAE,MAAM,CAAA;KAAE,GAAG,QAAQ;CAGrE"}
