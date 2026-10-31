@@ -11,28 +11,53 @@ pnpm add github:model-algebra/model-algebra-typescript
 
 The built package is in the repository, so nothing is built when it is installed.
 
-## Models and operations
+## Model operations
 
-`Model`, `Field`, `Metadata` and `Constraint` are this package's own classes for model operations:
+Models combine like sets, level by level of their JSON form, as the
+[Java library](https://github.com/model-algebra/model-algebra) does:
 
 ```ts
-import { Model } from 'model-algebra-typescript'
+import { Model } from 'model-algebra-common'
+import { union, intersection, subtraction, xor } from 'model-algebra-typescript'
 
-const core = Model.fromJsonString(coreJson)
-const extended = Model.fromJsonString(extendedJson)
-
-const user = core.add(extended)   // the union: fields of both, those of `core` first
-user.toJson()
-user.fieldsAsMap().get('email')
+const user = union(core, extended)   // a Model from Models, JSON from JSON
 ```
 
-| Operation | Status |
+| Operation | Result |
 |---|---|
-| `add` | Union of the fields, matched by name; a field in both keeps the first model's definition |
-| `sub`, `intersect`, `xor` | Not implemented yet; they throw |
+| `union(a, b)` | Fields and keys of both; where both have a value, `a`'s wins |
+| `intersection(a, b)` | Fields and keys both have |
+| `subtraction(a, b)` | Fields and keys of `a` that `b` doesn't have |
+| `xor(a, b)` | Fields and keys only one has |
 
-These classes cover metadata name and version and fields. For schemas, table constraints, indexes and target options,
-use `Model` from [model-algebra-common](https://github.com/model-algebra/common-typescript), as the diff below does.
+- **Sets:** objects are sets of their keys, and arrays of objects with a `name` (fields, table constraints, indexes)
+  are sets of those names. Other values are leaves.
+- **Nesting:** a key or name both sides have is combined again, one level down, when both values are objects or both
+  are named arrays; otherwise the value of `a` is kept. So a field both models have is combined key by key in a union
+  or an intersection, and taken out whole by a subtraction or an xor.
+- **The top level** of a model is combined one level down whatever the operation, so `subtraction` gives the fields of
+  `a` that `b` doesn't have rather than no fields at all. The metadata is `a`'s.
+- **Any keys** take part, also those the model format doesn't define. A bridge can keep what it needs in a model of
+  its own and unite it with the main model when needed; for example, the form options of
+  [vuetify-bridge](https://github.com/model-algebra/vuetify-bridge):
+
+```ts
+const eventForm = {
+    metadata: { name: 'Event' },
+    fields: [{ name: 'title', form: { label: 'Name', cols: 12 } }],
+    form: { submitText: 'Publish' },
+}
+union(eventModel, eventForm)   // eventModel with the form options; eventModel itself doesn't change
+```
+
+`combineJson(a, b, operation)` is the level-by-level combination of any two JSON values (objects or arrays), the
+`processLevel` of the Java library; it gives the same results on the shared examples of
+[model-examples](https://github.com/model-algebra/model-examples) (`processor/`). `combineModels()` adds the rule for
+the top level of models.
+
+The older `Model` class of this package (metadata name and version, and fields) has the same operations as methods:
+`a.add(b)`, `a.sub(b)`, `a.intersect(b)`, `a.xor(b)`. For everything else in models, use `Model` from
+[model-algebra-common](https://github.com/model-algebra/common-typescript) with the functions above.
 
 ## Validation
 

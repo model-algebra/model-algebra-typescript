@@ -1,5 +1,6 @@
 import { Field } from './Field.js';
 import { Metadata } from './Metadata.js';
+import { combineModels, type Operation } from './algebra.js';
 
 export class Model {
     constructor(
@@ -37,24 +38,27 @@ export class Model {
         return this.metadata;
     }
 
+    /** Fields of both models, combined level by level; see union() of the algebra. */
     add(m: Model): Model {
-        const targetMap = this.fieldsAsMap();
-        const resultFields = [
-            ...this.fields,
-            ...m.fields.filter(f => !targetMap.has(f.name))
-        ];
-        return new Model(this.metadata, resultFields);
+        return this.operate(m, 'union');
     }
 
-    sub(_m: Model): Model {
-        throw new Error('Not implemented');
+    /** Fields of this model that m doesn't have. */
+    sub(m: Model): Model {
+        return this.operate(m, 'subtraction');
     }
 
-    intersect(_m: Model): Model {
-        throw new Error('Not implemented');
+    /** Fields both models have. */
+    intersect(m: Model): Model {
+        return this.operate(m, 'intersection');
     }
 
-    xor(_m: Model): Model {
-        throw new Error('Not implemented');
+    /** Fields only one of the models has. */
+    xor(m: Model): Model {
+        return this.operate(m, 'xor');
+    }
+
+    private operate(m: Model, operation: Operation): Model {
+        return Model.fromJSON(combineModels(JSON.parse(this.toJson()), JSON.parse(m.toJson()), operation));
     }
 }

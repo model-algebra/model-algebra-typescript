@@ -10,9 +10,14 @@ export declare class Model {
     fieldsAsStream(): Field[];
     fieldsAsMap(): Map<string, Field>;
     getMetadata(): Metadata;
+    /** Fields of both models, combined level by level; see union() of the algebra. */
     add(m: Model): Model;
-    sub(_m: Model): Model;
-    intersect(_m: Model): Model;
-    xor(_m: Model): Model;
+    /** Fields of this model that m doesn't have. */
+    sub(m: Model): Model;
+    /** Fields both models have. */
+    intersect(m: Model): Model;
+    /** Fields only one of the models has. */
+    xor(m: Model): Model;
+    private operate;
 }
 //# sourceMappingURL=Model.d.ts.map

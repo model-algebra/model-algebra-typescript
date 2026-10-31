@@ -110,10 +110,21 @@ describe('Model', () => {
         });
     });
 
-    describe('unimplemented operations', () => {
-        it('sub should throw Not implemented', () => {
-            const model = Model.fromJsonString(readExample('user_core_model.json'));
-            expect(() => model.sub(model)).toThrow('Not implemented');
+    describe('other operations', () => {
+        const core = () => Model.fromJsonString(readExample('user_core_model.json'));
+        const extended = () => Model.fromJsonString(readExample('user_extended_model.json'));
+        const names = (model: Model) => model.fields.map(f => f.name);
+
+        it('sub keeps the fields the other model does not have', () => {
+            expect(names(core().add(extended()).sub(extended()))).toEqual(names(core()));
+        });
+
+        it('intersect keeps the fields both models have', () => {
+            expect(names(core().add(extended()).intersect(core()))).toEqual(names(core()));
+        });
+
+        it('xor keeps the fields only one model has', () => {
+            expect(names(core().xor(core().add(extended())))).toEqual(names(extended()));
         });
     });
 });
