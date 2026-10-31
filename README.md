@@ -68,6 +68,8 @@ What is matched and compared:
 - **Models** are matched by `metadata.name`; fields, table constraints and indexes by `name`. A rename shows as a
   removal and an addition.
 - **Metadata:** `schema` and `description` are compared, the `version` isn't.
+- **Sorting and filtering:** `sortable` and `filterable` of fields are compared by what they mean: `true` and the
+  default definition are the same. `sortings` and `filters` of models are matched by name.
 - **Field constraints** may be given as a map or as `Constraint` objects. The legacy `foreign_key` is read as
   `foreignKey`. Values are compared regardless of key order.
 
@@ -87,12 +89,14 @@ interface ModelDiff {
     fields: { added: FieldData[], removed: FieldData[], changed: FieldChange[] }
     constraints: { added: TableConstraint[], removed: TableConstraint[], changed: Change<TableConstraint>[] }
     indexes: { added: Index[], removed: Index[], changed: Change<Index>[] }
+    sortings: { added: NamedSorting[], removed: NamedSorting[], changed: Change<NamedSorting>[] }   // { name, keys }
+    filters: { added: NamedFilter[], removed: NamedFilter[], changed: Change<NamedFilter>[] }       // { name, filter }
 }
 
 interface Change<T> { from: T, to: T }
 
 interface FieldChange extends Change<FieldData> {
-    // what differs: 'type', 'parameters', 'description', 'targets', 'constraints.<name>'
+    // what differs: 'type', 'parameters', 'description', 'targets', 'sortable', 'filterable', 'constraints.<name>'
     changes: string[]
 }
 ```

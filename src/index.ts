@@ -7,4 +7,5 @@ export {
     diff, diffModels, invertDiff, isEmptyDiff, isEmptyModelDiff, toModelData, toFieldData,
     type ModelSetDiff, type ModelDiff, type FieldChange, type ItemsDiff, type Change,
     type ModelData, type MetadataData, type FieldData,
+    type NamedSorting, type NamedFilter,
 } from './ModelDiff.js';

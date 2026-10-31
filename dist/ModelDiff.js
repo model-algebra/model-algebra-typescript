@@ -1,3 +1,4 @@
+import { filterDefinitions, sortDefinitions } from 'model-algebra-common';
 const COMPARED_METADATA = ['schema', 'description'];
 /** JSON value with object keys sorted and undefined properties left out, for comparing by value. */
 function canonical(value) {
@@ -38,6 +39,8 @@ export function toFieldData(field) {
         parameters: field.parameters,
         constraints: Object.keys(constraints).length > 0 ? constraints : undefined,
         targets: field.targets,
+        sortable: field.sortable,
+        filterable: field.filterable,
     });
 }
 /** A model in its JSON form, whether it was built by Model.fromJSON() or from the JSON form directly. */
@@ -48,6 +51,8 @@ export function toModelData(model) {
         fields: model.fields.map(field => toFieldData(field)),
         constraints: model.constraints?.length ? model.constraints : undefined,
         indexes: model.indexes?.length ? model.indexes : undefined,
+        sortings: model.sortings !== undefined && Object.keys(model.sortings).length > 0 ? model.sortings : undefined,
+        filters: model.filters !== undefined && Object.keys(model.filters).length > 0 ? model.filters : undefined,
     });
 }
 function diffItems(from, to, change) {
@@ -66,6 +71,8 @@ function diffItems(from, to, change) {
         changed,
     };
 }
+const namedSortings = (model) => Object.entries(model.sortings ?? {}).map(([name, keys]) => ({ name, keys }));
+const namedFilters = (model) => Object.entries(model.filters ?? {}).map(([name, filter]) => ({ name, filter }));
 function changeOf(from, to) {
     return equal(from, to) ? undefined : { from, to };
 }
@@ -74,6 +81,11 @@ function fieldChange(from, to) {
     for (const property of ['type', 'parameters', 'description', 'targets'])
         if (!equal(from[property], to[property]))
             changes.push(property);
+    // true, one definition or named ones: the same definitions are the same whichever way they are written
+    if (!equal(sortDefinitions(from.sortable), sortDefinitions(to.sortable)))
+        changes.push('sortable');
+    if (!equal(filterDefinitions(from.filterable), filterDefinitions(to.filterable)))
+        changes.push('filterable');
     const before = from.constraints ?? {};
     const after = to.constraints ?? {};
     for (const name of [...new Set([...Object.keys(before), ...Object.keys(after)])].sort())
@@ -97,6 +109,8 @@ export function diffModels(from, to) {
         fields: diffItems(before.fields, after.fields, fieldChange),
         constraints: diffItems(before.constraints ?? [], after.constraints ?? [], changeOf),
         indexes: diffItems(before.indexes ?? [], after.indexes ?? [], changeOf),
+        sortings: diffItems(namedSortings(before), namedSortings(after), changeOf),
+        filters: diffItems(namedFilters(before), namedFilters(after), changeOf),
     };
     return isEmptyModelDiff(result) ? null : result;
 }
@@ -120,7 +134,8 @@ function itemsEmpty(items) {
 }
 export function isEmptyModelDiff(difference) {
     return Object.keys(difference.metadata).length === 0
-        && itemsEmpty(difference.fields) && itemsEmpty(difference.constraints) && itemsEmpty(difference.indexes);
+        && itemsEmpty(difference.fields) && itemsEmpty(difference.constraints) && itemsEmpty(difference.indexes)
+        && itemsEmpty(difference.sortings) && itemsEmpty(difference.filters);
 }
 /** True when the two sets have no differences. */
 export function isEmptyDiff(difference) {
@@ -145,6 +160,8 @@ export function invertDiff(difference) {
             fields: invertItems(model.fields),
             constraints: invertItems(model.constraints),
             indexes: invertItems(model.indexes),
+            sortings: invertItems(model.sortings),
+            filters: invertItems(model.filters),
         })),
     };
 }

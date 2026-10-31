@@ -1,4 +1,4 @@
-import type { Index, Model as CommonModel, ModelSet, TableConstraint } from 'model-algebra-common';
+import type { Filterable, Index, Model as CommonModel, ModelFilter, ModelSet, Sortable, SortKey, TableConstraint } from 'model-algebra-common';
 /** A field in JSON form: constraints as a map, no undefined properties. */
 export interface FieldData {
     name: string;
@@ -7,6 +7,8 @@ export interface FieldData {
     parameters?: Record<string, unknown>;
     constraints?: Record<string, unknown>;
     targets?: Record<string, Record<string, unknown>>;
+    sortable?: Sortable;
+    filterable?: Filterable;
 }
 export interface MetadataData {
     name: string;
@@ -20,14 +22,29 @@ export interface ModelData {
     fields: FieldData[];
     constraints?: TableConstraint[];
     indexes?: Index[];
+    sortings?: Record<string, SortKey[]>;
+    filters?: Record<string, ModelFilter>;
 }
 export interface Change<T> {
     from: T;
     to: T;
 }
 export interface FieldChange extends Change<FieldData> {
-    /** What differs: 'type', 'parameters', 'description', 'targets', or 'constraints.<name>' for each constraint. */
+    /**
+     * What differs: 'type', 'parameters', 'description', 'targets', 'sortable', 'filterable', or 'constraints.<name>'
+     * for each constraint.
+     */
     changes: string[];
+}
+/** A named sort order of a model. */
+export interface NamedSorting {
+    name: string;
+    keys: SortKey[];
+}
+/** A named filter of a model. */
+export interface NamedFilter {
+    name: string;
+    filter: ModelFilter;
 }
 /** Items of one kind in a model, matched by name. */
 export interface ItemsDiff<T, C = Change<T>> {
@@ -43,6 +60,8 @@ export interface ModelDiff {
     fields: ItemsDiff<FieldData, FieldChange>;
     constraints: ItemsDiff<TableConstraint>;
     indexes: ItemsDiff<Index>;
+    sortings: ItemsDiff<NamedSorting>;
+    filters: ItemsDiff<NamedFilter>;
 }
 export interface ModelSetDiff {
     /** Models only in the new set. */

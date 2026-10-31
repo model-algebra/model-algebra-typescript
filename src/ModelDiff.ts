@@ -1,4 +1,7 @@
-import type { Index, Model as CommonModel, ModelSet, TableConstraint } from 'model-algebra-common';
+import { filterDefinitions, sortDefinitions } from 'model-algebra-common';
+import type {
+    Filterable, Index, Model as CommonModel, ModelFilter, ModelSet, Sortable, SortKey, TableConstraint,
+} from 'model-algebra-common';
 
 /*
  * Differences between two versions of a set of models, e.g. the models a database has now and the models it should
@@ -15,6 +18,8 @@ export interface FieldData {
     parameters?: Record<string, unknown>;
     constraints?: Record<string, unknown>;
     targets?: Record<string, Record<string, unknown>>;
+    sortable?: Sortable;
+    filterable?: Filterable;
 }
 
 export interface MetadataData {
@@ -30,6 +35,8 @@ export interface ModelData {
     fields: FieldData[];
     constraints?: TableConstraint[];
     indexes?: Index[];
+    sortings?: Record<string, SortKey[]>;
+    filters?: Record<string, ModelFilter>;
 }
 
 export interface Change<T> {
@@ -38,8 +45,23 @@ export interface Change<T> {
 }
 
 export interface FieldChange extends Change<FieldData> {
-    /** What differs: 'type', 'parameters', 'description', 'targets', or 'constraints.<name>' for each constraint. */
+    /**
+     * What differs: 'type', 'parameters', 'description', 'targets', 'sortable', 'filterable', or 'constraints.<name>'
+     * for each constraint.
+     */
     changes: string[];
+}
+
+/** A named sort order of a model. */
+export interface NamedSorting {
+    name: string;
+    keys: SortKey[];
+}
+
+/** A named filter of a model. */
+export interface NamedFilter {
+    name: string;
+    filter: ModelFilter;
 }
 
 /** Items of one kind in a model, matched by name. */
@@ -57,6 +79,8 @@ export interface ModelDiff {
     fields: ItemsDiff<FieldData, FieldChange>;
     constraints: ItemsDiff<TableConstraint>;
     indexes: ItemsDiff<Index>;
+    sortings: ItemsDiff<NamedSorting>;
+    filters: ItemsDiff<NamedFilter>;
 }
 
 export interface ModelSetDiff {
@@ -111,6 +135,8 @@ export function toFieldData(field: Record<string, any>): FieldData {
         parameters: field.parameters,
         constraints: Object.keys(constraints).length > 0 ? constraints : undefined,
         targets: field.targets,
+        sortable: field.sortable,
+        filterable: field.filterable,
     });
 }
 
@@ -122,6 +148,8 @@ export function toModelData(model: CommonModel): ModelData {
         fields: model.fields.map(field => toFieldData(field)),
         constraints: model.constraints?.length ? model.constraints : undefined,
         indexes: model.indexes?.length ? model.indexes : undefined,
+        sortings: model.sortings !== undefined && Object.keys(model.sortings).length > 0 ? model.sortings : undefined,
+        filters: model.filters !== undefined && Object.keys(model.filters).length > 0 ? model.filters : undefined,
     });
 }
 
@@ -145,6 +173,11 @@ function diffItems<T extends { name: string }, C>(
     };
 }
 
+const namedSortings = (model: ModelData): NamedSorting[] =>
+    Object.entries(model.sortings ?? {}).map(([name, keys]) => ({ name, keys }));
+const namedFilters = (model: ModelData): NamedFilter[] =>
+    Object.entries(model.filters ?? {}).map(([name, filter]) => ({ name, filter }));
+
 function changeOf<T>(from: T, to: T): Change<T> | undefined {
     return equal(from, to) ? undefined : { from, to };
 }
@@ -153,6 +186,9 @@ function fieldChange(from: FieldData, to: FieldData): FieldChange | undefined {
     const changes: string[] = [];
     for (const property of ['type', 'parameters', 'description', 'targets'] as const)
         if (!equal(from[property], to[property])) changes.push(property);
+    // true, one definition or named ones: the same definitions are the same whichever way they are written
+    if (!equal(sortDefinitions(from.sortable), sortDefinitions(to.sortable))) changes.push('sortable');
+    if (!equal(filterDefinitions(from.filterable), filterDefinitions(to.filterable))) changes.push('filterable');
     const before = from.constraints ?? {};
     const after = to.constraints ?? {};
     for (const name of [...new Set([...Object.keys(before), ...Object.keys(after)])].sort())
@@ -178,6 +214,8 @@ export function diffModels(from: CommonModel, to: CommonModel): ModelDiff | null
         fields: diffItems(before.fields, after.fields, fieldChange),
         constraints: diffItems(before.constraints ?? [], after.constraints ?? [], changeOf),
         indexes: diffItems(before.indexes ?? [], after.indexes ?? [], changeOf),
+        sortings: diffItems(namedSortings(before), namedSortings(after), changeOf),
+        filters: diffItems(namedFilters(before), namedFilters(after), changeOf),
     };
     return isEmptyModelDiff(result) ? null : result;
 }
@@ -203,7 +241,8 @@ function itemsEmpty(items: ItemsDiff<unknown, unknown>): boolean {
 
 export function isEmptyModelDiff(difference: ModelDiff): boolean {
     return Object.keys(difference.metadata).length === 0
-        && itemsEmpty(difference.fields) && itemsEmpty(difference.constraints) && itemsEmpty(difference.indexes);
+        && itemsEmpty(difference.fields) && itemsEmpty(difference.constraints) && itemsEmpty(difference.indexes)
+        && itemsEmpty(difference.sortings) && itemsEmpty(difference.filters);
 }
 
 /** True when the two sets have no differences. */
@@ -231,6 +270,8 @@ export function invertDiff(difference: ModelSetDiff): ModelSetDiff {
             fields: invertItems(model.fields),
             constraints: invertItems(model.constraints),
             indexes: invertItems(model.indexes),
+            sortings: invertItems(model.sortings),
+            filters: invertItems(model.filters),
         })),
     };
 }

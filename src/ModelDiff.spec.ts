@@ -141,3 +141,52 @@ describe('invertDiff', () => {
         expect(invertDiff(invertDiff(result))).toEqual(result);
     });
 });
+
+describe('sorting and filtering', () => {
+    const person = {
+        metadata: { name: 'Person', version: '1.0.0' },
+        fields: [
+            { name: 'lastName', type: 'TEXT', sortable: true, filterable: { op: '=' } },
+            { name: 'age', type: 'INT16', filterable: { ops: ['>=', '<='] } },
+        ],
+        sortings: { byName: [{ field: 'lastName' }] },
+        filters: { adults: { field: 'age', op: '>=', value: 18 }, active: { predicate: 'isActive' } },
+    };
+
+    it('are kept by toModelData', () => {
+        const read = toModelData(Model.fromJSON(clone(person)));
+        expect(read.fields[0].sortable).toBe(true);
+        expect(read.fields[1].filterable).toEqual({ ops: ['>=', '<='] });
+        expect(read.sortings).toEqual(person.sortings);
+        expect(read.filters).toEqual(person.filters);
+    });
+
+    it('of fields are compared by what they mean, not how they are written', () => {
+        const same = clone(person);
+        (same.fields[0] as any).sortable = {};
+        (same.fields[0] as any).filterable = true;
+        expect(diffModels(Model.fromJSON(person), Model.fromJSON(same))).toBeNull();
+    });
+
+    it('of fields are changes of the field', () => {
+        const after = clone(person);
+        (after.fields[0] as any).sortable = { plain: {}, caseless: { function: 'lower' } };
+        delete (after.fields[1] as any).filterable;
+        const result = diffModels(Model.fromJSON(person), Model.fromJSON(after))!;
+        expect(result.fields.changed.map(c => [c.to.name, c.changes])).toEqual([['lastName', ['sortable']], ['age', ['filterable']]]);
+    });
+
+    it('of models are matched by name', () => {
+        const after = clone(person) as any;
+        after.sortings = { byName: [{ field: 'lastName', direction: 'desc' }], byAge: [{ field: 'age' }] };
+        delete after.filters.active;
+        const result = diffModels(Model.fromJSON(person), Model.fromJSON(after))!;
+        expect(result.sortings).toEqual({
+            added: [{ name: 'byAge', keys: [{ field: 'age' }] }],
+            removed: [],
+            changed: [{ from: { name: 'byName', keys: [{ field: 'lastName' }] }, to: { name: 'byName', keys: [{ field: 'lastName', direction: 'desc' }] } }],
+        });
+        expect(result.filters.removed).toEqual([{ name: 'active', filter: { predicate: 'isActive' } }]);
+        expect(invertDiff(diff(set(person), set(after)))).toEqual(diff(set(after), set(person)));
+    });
+});
