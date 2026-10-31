@@ -1,6 +1,60 @@
 # model-algebra-typescript
 
-TypeScript implementation of model-algebra.
+TypeScript implementation of [model-algebra](https://github.com/model-algebra/model-algebra): model operations,
+validation against the model schema, and the diff of sets of models.
+
+## Installation
+
+```sh
+pnpm add github:model-algebra/model-algebra-typescript
+```
+
+The package builds itself when installed. With pnpm, allow that in `pnpm-workspace.yaml`:
+
+```yaml
+onlyBuiltDependencies:
+  - model-algebra-common
+  - model-algebra-typescript
+```
+
+## Models and operations
+
+`Model`, `Field`, `Metadata` and `Constraint` are this package's own classes for model operations:
+
+```ts
+import { Model } from 'model-algebra-typescript'
+
+const core = Model.fromJsonString(coreJson)
+const extended = Model.fromJsonString(extendedJson)
+
+const user = core.add(extended)   // the union: fields of both, those of `core` first
+user.toJson()
+user.fieldsAsMap().get('email')
+```
+
+| Operation | Status |
+|---|---|
+| `add` | Union of the fields, matched by name; a field in both keeps the first model's definition |
+| `sub`, `intersect`, `xor` | Not implemented yet; they throw |
+
+These classes cover metadata name and version and fields. For schemas, table constraints, indexes and target options,
+use `Model` from [model-algebra-common](https://github.com/model-algebra/common-typescript), as the diff below does.
+
+## Validation
+
+`Validator` checks a model against the JSON Schema of the format
+([model-schema](https://github.com/model-algebra/model-schema)), with [Ajv](https://ajv.js.org/):
+
+```ts
+import { Validator } from 'model-algebra-typescript'
+
+const validator = new Validator('path/to/model-schema.json')
+const errors = validator.validateJson(text)   // or validate(object); empty when the model is valid
+// [{ message: 'must have required property \'type\'', instancePath: '/fields/0', schemaPath: '...' }]
+```
+
+The schema file is not part of the package. Give the path to a copy of `model-schema.json`; the default,
+`resources/schemas/model-schema.json`, is read relative to the working directory.
 
 ## Model diff
 
